@@ -49,7 +49,7 @@ python -m ruff check .
 python -m pytest
 ```
 
-The project currently contains 22 passing automated tests.
+The project contains 22 passing automated tests. The tests cover data preparation, neural network architecture, optimizer updates, small-batch learning, validation behavior, and best-checkpoint restoration.
 
 ## Data and split
 
@@ -112,11 +112,15 @@ Each training batch follows these steps:
 
 The project uses the Adam optimizer, a batch size of 64, and 100 epochs for each experiment.
 
+The main model uses a learning rate of 0.001. The other experiments change either the learning rate or the hidden-layer sizes.
+
 Training loss, training MAE, validation loss, and validation MAE are recorded for every epoch.
 
-The checkpoint with the lowest validation loss is saved in memory and restored when training finishes.
+During training, the function records the weights from the epoch with the lowest validation loss. When training finishes, those best weights are restored instead of keeping the final epoch's weights.
 
-The project uses seed 42 for the data split, PyTorch initialization, and training DataLoader generator. Running `python train.py` twice on the same computer produced identical report files, verified using SHA-256 checksums.
+The project uses seed 42 for the data split, PyTorch initialization, and training DataLoader generator.
+
+Running `python train.py` twice in the original environment produced identical report files, verified using SHA-256 checksums. Fresh-clone testing also reproduced all training histories, experiment tables, and images exactly. The final metrics agreed within a small numerical tolerance because of minor floating-point differences in linear regression calculations.
 
 ## Results
 
@@ -125,7 +129,15 @@ The neural network is compared with two simple baselines trained on the same tra
 1. **Training-mean baseline:** Always predicts the mean number of rentals from the training data.
 2. **Linear regression:** Uses scikit-learn's `LinearRegression` with the prepared input features.
 
-The best neural network was selected from the experiments using validation performance. The final selected network was evaluated on the held-out test set only after model selection.
+### Final model selection
+
+For each experiment, the training function saved and restored the network weights from the epoch with the lowest validation loss.
+
+The experiments were then compared using the validation MAE of their restored checkpoints.
+
+The wider network achieved the lowest validation MAE and was selected as the final model.
+
+The held-out test set was evaluated only after the final model was selected. Test results were not used to choose the network or change its training settings.
 
 ### Model comparison
 
@@ -164,6 +176,8 @@ This graph shows how average bike rentals change during the day. The changing pa
 The main network's training and validation losses decreased throughout the 100 epochs.
 
 Training loss reached approximately 32.59, while validation loss reached approximately 30.01.
+
+Training loss was calculated while the network weights were being updated during each epoch. Validation loss was calculated afterward using the updated weights. This helps explain why validation loss was sometimes slightly lower than training loss.
 
 The best validation-loss epoch was 100. The curves remained relatively close together, with no clear evidence of sustained overfitting.
 
